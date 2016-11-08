@@ -30,6 +30,5 @@ public class sender{
     new Random().nextBytes(data);                        // initialize random data to the data array.
 
     senderSocket = new DatagramSocket(senderPort);
-
   }
 }
