@@ -1,6 +1,6 @@
 import java.io.*;
 import java.net.*;
-
+import java.nio.ByteBuffer;
 public class receiver{
   static int x = 0;                                    // cumulative ACK#
   static int receiverPort;
@@ -17,21 +17,29 @@ public class receiver{
   public static void main(String[] args) throws Exception {
     receiverPort = Integer.parseInt(args[0]);
     receiverSocket = new DatagramSocket(receiverPort);
-
     byte[] receivedData = new byte[10000];
     DatagramPacket receivePacket = new DatagramPacket(receivedData,receivedData.length);
-    receiverSocket.receive(receivePacket);
+    while(x<99999){
+      receiverSocket.receive(receivePacket);
 
-    receivedData = receivePacket.getData();
-    senderPort = receivePacket.getPort();
-    senderAddress = receivePacket.getAddress();
+      receivedData = receivePacket.getData();
+      senderPort = receivePacket.getPort();
+      senderAddress = receivePacket.getAddress();
 
-    Packet rcv = extractPacketInfo(new ByteArrayInputStream(receivedData));
-    x = rcv.seqNo;
-    byte[] dataToSend = new byte[1];
-    dataToSend[0] = (byte) x;
+      Packet rcv = extractPacketInfo(new ByteArrayInputStream(receivedData));
 
-    DatagramPacket packetToSend = new DatagramPacket(dataToSend,dataToSend.length,senderAddress,senderPort);
-    receiverSocket.send(packetToSend);                          //TODO: Debug if the right ack is being sent.
+      if(x==rcv.seqNo){
+        int temp = rcv.seqNo + rcv.dataSize;
+        x = temp;
+      }
+      String str = String.valueOf(x);
+      byte[] ackBytes = str.getBytes();
+      DatagramPacket packetToSend = new DatagramPacket(ackBytes,ackBytes.length,senderAddress,senderPort);
+      receiverSocket.send(packetToSend);                          //TODO: Debug if the right ack is being sent.
+      printValues(x);
+    }
+  }
+  private static void printValues(int number){
+      System.out.println("Ack#: " + String.valueOf(number) );
   }
 }
