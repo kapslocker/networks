@@ -3,10 +3,10 @@ import java.net.*;
 import java.nio.ByteBuffer;
 public class receiver{
   static int x = 0;                                    // cumulative ACK#
-  static int receiverPort;
+  static int receiverPort = 4358;
   static DatagramSocket receiverSocket;
   static int senderPort;
-  static int senderReceivePort;
+  static int senderReceivePort = 1124;
   static InetAddress senderAddress;
 
   private static Packet extractPacketInfo(ByteArrayInputStream receivedBytes) throws Exception{
@@ -17,14 +17,13 @@ public class receiver{
   }
 
   public static void main(String[] args) throws Exception {
-    receiverPort = Integer.parseInt(args[0]);
-    senderReceivePort = Integer.parseInt(args[1]);
+    if(args.length>0)
+      receiverPort = Integer.parseInt(args[0]);
     receiverSocket = new DatagramSocket(receiverPort);
     byte[] receivedData = new byte[10000];
     DatagramPacket receivePacket = new DatagramPacket(receivedData, receivedData.length);
     while(x < 99999){
       receiverSocket.receive(receivePacket);
-
       receivedData = receivePacket.getData();
       senderPort = receivePacket.getPort();
       senderAddress = receivePacket.getAddress();

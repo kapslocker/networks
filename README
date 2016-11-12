@@ -1,0 +1,24 @@
+commands:
+java sender <receiver IP> <receiver port> [loss_param]
+
+java receiver
+
+Working:
+The sender's sending port is 1123.
+The sender's receiving port is 1124.
+The receiver sets its port as specified by the user. with a default value 4358.
+The sender works in two different threads, one to send packets for the allowed
+Window length from the latest received acknowledgement from the receiver, and the
+other to receive acknowledgements from the receiver.
+
+The receiver accepts packets from the sender and updates it's ack parameter to x
+if it has received all packets with seq# < x, and sends this ack to sender.
+Otherwise it sends the previously sent ack again.
+
+The sender's received thread maintains the Window length, and updates it on every
+successful Ack received. It also cancels timers for previously sent packets.
+The send thread inserts packets, along with their timestamps into a queue q,
+after sending them to the receiver.
+A timer of 1000ms checks for packet loss, in the event of which, the entire queue
+is cleared and packets with seq# beginning the received ack are sent. The window
+is resized to 1 MSS.

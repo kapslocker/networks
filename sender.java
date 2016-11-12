@@ -4,7 +4,7 @@ import java.lang.*;
 import java.util.concurrent.TimeUnit;
 import java.util.Random;
 import java.util.LinkedList;
-
+import java.util.concurrent.ThreadLocalRandom;
 public class sender{
 
   private static class Node{
@@ -26,11 +26,12 @@ public class sender{
   static int receiverPort ;
   static DatagramSocket senderSocket;
   static DatagramSocket senderReceiveSocket;
-  static int senderPort = 4357;           //TODO: check if this needs to be done.
-  static int senderReceivePort = 4358;
+  static int senderPort = 1123;           //TODO: check if this needs to be done.
+  static int senderReceivePort = 1124;
   static long initTime;
   static int receivedAck = 0;
   static LinkedList<Node> q;
+  static int LOSS_FLAG = 0;
 /*
 * Generates a Packet to send over the network.
 * The packet contains bytes from seq# upto seq# + dataSize.
@@ -55,30 +56,19 @@ public class sender{
 
     return sendPacket;
   }
-
-  private static void sendPackets(int receivedAck) throws Exception{
-    int temp = 0;
-    while(temp<W){
-      int size = min(MSS,W-temp);
-      DatagramPacket packet = getPacket(receivedAck+temp,size);
-      long currTime = System.nanoTime();
-      senderSocket.send(packet);
-      printValues(receivedAck + temp,currTime,0);                    // print seqNo
-      temp = temp + size;
-    }
-  }
-
   public static void main(String[] args) throws Exception {
     receiverAddress = InetAddress.getByName(args[0]);
     receiverPort = Integer.parseInt(args[1]);
     new Random().nextBytes(data);                        // initialize random data to the data array.
     q = new LinkedList<Node>();
-//    initTime = System.nanoTime();
+    if(args.length >=3){
+      int t = Integer.parseInt(args[2]);
+      LOSS_FLAG = t;
+    }
+    initTime = System.nanoTime();
     senderSocket = new DatagramSocket(senderPort);
     senderReceiveSocket = new DatagramSocket(senderReceivePort);
 
-    // send first packet here.
-    //sendPackets(0);
 
     SendThread s = new SendThread();
     s.start();
@@ -90,15 +80,24 @@ public class sender{
     public void run(){
       try{
         int currSent = 0;                                                         // i.e. I've sent upto this point.
-        while(true){
-          int limit = receivedAck + W;                                            // This is the max I'm allowed to send.
+        while(receivedAck < DATA_LENGTH){
+          int limit = min(receivedAck + W,DATA_LENGTH);                                            // This is the max I'm allowed to send.
 
           while(currSent < limit){                                                // Send all packets I'm allowed to send, until window closes.
+
             int size = min(MSS,limit - currSent);
             if(currSent < DATA_LENGTH){
               DatagramPacket packet = getPacket(currSent,size);
               long currTime = System.nanoTime();
-              senderSocket.send(packet);
+              if(LOSS_FLAG > 0)
+              {
+                if(ThreadLocalRandom.current().nextInt(1,21) != 1)
+                    senderSocket.send(packet);
+              }
+              else
+              {
+                  senderSocket.send(packet);
+              }
               printValues(currSent,currTime,0);                    // print seqNo
               q.addFirst(new Node(currSent,size,currTime));                           // put this packet in queue for timer check.
               currSent = currSent + size;
@@ -106,7 +105,7 @@ public class sender{
           }
           if(q.size() > 0){                                                    // Check for lost packets.
             Node node = q.getLast();
-            if(System.nanoTime() - node.T > 1000000000){
+            if(node != null  && System.nanoTime() - node.T > 1000000000){
               W = MSS;                                                             // drop Window size
               currSent = receivedAck;
               q.clear();
