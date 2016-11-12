@@ -6,6 +6,7 @@ public class receiver{
   static int receiverPort;
   static DatagramSocket receiverSocket;
   static int senderPort;
+  static int senderReceivePort;
   static InetAddress senderAddress;
 
   private static Packet extractPacketInfo(ByteArrayInputStream receivedBytes) throws Exception{
@@ -14,12 +15,14 @@ public class receiver{
     iStream.close();
     return packet;
   }
+
   public static void main(String[] args) throws Exception {
     receiverPort = Integer.parseInt(args[0]);
+    senderReceivePort = Integer.parseInt(args[1]);
     receiverSocket = new DatagramSocket(receiverPort);
     byte[] receivedData = new byte[10000];
-    DatagramPacket receivePacket = new DatagramPacket(receivedData,receivedData.length);
-    while(x<99999){
+    DatagramPacket receivePacket = new DatagramPacket(receivedData, receivedData.length);
+    while(x < 99999){
       receiverSocket.receive(receivePacket);
 
       receivedData = receivePacket.getData();
@@ -28,13 +31,13 @@ public class receiver{
 
       Packet rcv = extractPacketInfo(new ByteArrayInputStream(receivedData));
 
-      if(x==rcv.seqNo){
+      if(x == rcv.seqNo){
         int temp = rcv.seqNo + rcv.dataSize;
         x = temp;
       }
       String str = String.valueOf(x);
       byte[] ackBytes = str.getBytes();
-      DatagramPacket packetToSend = new DatagramPacket(ackBytes,ackBytes.length,senderAddress,senderPort);
+      DatagramPacket packetToSend = new DatagramPacket(ackBytes, ackBytes.length, senderAddress, senderReceivePort);
       receiverSocket.send(packetToSend);                          //TODO: Debug if the right ack is being sent.
       printValues(x);
     }

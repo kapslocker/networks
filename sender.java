@@ -18,7 +18,7 @@ public class sender{
     }
   }
 
-  static final int DATA_LENGTH = 100000;             // 'flow' tat needs to be sent across.
+  static final int DATA_LENGTH = 100000;             // 'flow' that needs to be sent across.
   static final int MSS = 1000;                       // Maximum size of data, EXCLUDING headers.
   static int W = 1*MSS;                                // Window size.
   static byte[] data = new byte[DATA_LENGTH];
@@ -64,13 +64,15 @@ public class sender{
       temp = temp + size;
     }
   }
-  public static void main(String[] args)throws Exception {
+
+  public static void main(String[] args) throws Exception {
     receiverAddress = InetAddress.getByName(args[0]);
     receiverPort = Integer.parseInt(args[1]);
     new Random().nextBytes(data);                        // initialize random data to the data array.
     q = new LinkedList<Node>();
 //    initTime = System.nanoTime();
     senderSocket = new DatagramSocket(senderPort);
+    senderReceiveSocket = new DatagramSocket(senderReceivePort);
 
     // send first packet here.
     //sendPackets(0);
@@ -125,11 +127,11 @@ public class sender{
       try{
         while(receivedAck<DATA_LENGTH){
           byte[] receivedData = new byte[10];
-          DatagramPacket receivedPacket = new DatagramPacket(receivedData,receivedData.length);
-          senderSocket.receive(receivedPacket);
+          DatagramPacket receivedPacket = new DatagramPacket(receivedData, receivedData.length);
+          senderReceiveSocket.receive(receivedPacket);
           String str =  new String(receivedPacket.getData());
           int ack = Integer.parseInt(str.trim());
-          printValues(ack,System.nanoTime(),1);
+          printValues(ack, System.nanoTime(), 1);
           receivedAck = ack;
           W = W + (MSS*MSS)/W;
           if(q.size()>0)
@@ -144,7 +146,7 @@ public class sender{
             }
           }
         }
-      }catch(Exception e)
+      } catch(Exception e)
       {
         System.out.println("Exception:" + e.getLocalizedMessage());
       }
@@ -157,11 +159,11 @@ public class sender{
 
   }
 
-  private static void printValues(int number, long currTime,int flag){
-    if(flag == 0){
+  private static void printValues(int number, long currTime, int flag){
+    if(flag == 0) {
       System.out.println("Seq#: " + String.valueOf(number) + "\t"+"Time elapsed: " + String.valueOf( (double)(currTime - initTime)/1000000000 ) + " s");
     }
-    else{
+    else {
       System.out.println("Ack#: " + String.valueOf(number) + "\t"+"Time elapsed: " + String.valueOf( (double)(currTime - initTime)/1000000000) + " s");
     }
   }
