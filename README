@@ -1,4 +1,4 @@
-commands:
+Usage:
 java sender <receiver IP> <receiver port> [loss_param]
 
 java receiver
