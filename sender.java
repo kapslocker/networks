@@ -38,7 +38,10 @@ public class sender{
   private static DatagramPacket getPacket(int seqNo,int dataSize) throws Exception{
     int start = seqNo;int end = start + dataSize - 1;
     byte[] packetData = new byte[dataSize];
-    for(int i=0;i<dataSize;i++){
+    for(int i=0; i<dataSize; i++){
+      if(start + i >= DATA_LENGTH){
+        break;
+      }
       packetData[i] = data[start + i];
     }
     Packet packet = new Packet(seqNo,dataSize,packetData);
@@ -48,7 +51,7 @@ public class sender{
     objectOutput.writeObject(packet);
     objectOutput.close();
     byte[] data = opStream.toByteArray();
-    DatagramPacket sendPacket = new DatagramPacket(data, data.length,receiverAddress,receiverPort);
+    DatagramPacket sendPacket = new DatagramPacket(data, data.length, receiverAddress, receiverPort);
 
     return sendPacket;
   }
@@ -92,12 +95,14 @@ public class sender{
 
           while(currSent < limit){                                                // Send all packets I'm allowed to send, until window closes.
             int size = min(MSS,limit - currSent);
-            DatagramPacket packet = getPacket(currSent,size);
-            long currTime = System.nanoTime();
-            senderSocket.send(packet);
-            printValues(currSent,currTime,0);                    // print seqNo
-            q.addFirst(new Node(currSent,size,currTime));                           // put this packet in queue for timer check.
-            currSent = currSent + size;
+            if(currSent < DATA_LENGTH){
+              DatagramPacket packet = getPacket(currSent,size);
+              long currTime = System.nanoTime();
+              senderSocket.send(packet);
+              printValues(currSent,currTime,0);                    // print seqNo
+              q.addFirst(new Node(currSent,size,currTime));                           // put this packet in queue for timer check.
+              currSent = currSent + size;
+            }
           }
           if(q.size() > 0){                                                    // Check for lost packets.
             Node node = q.getLast();
@@ -125,7 +130,7 @@ public class sender{
   private static class ReceiveThread extends Thread{
     public void run(){
       try{
-        while(receivedAck<DATA_LENGTH){
+        while(receivedAck < DATA_LENGTH){
           byte[] receivedData = new byte[10];
           DatagramPacket receivedPacket = new DatagramPacket(receivedData, receivedData.length);
           senderReceiveSocket.receive(receivedPacket);
