@@ -5,8 +5,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.Random;
 import java.util.LinkedList;
 import java.util.concurrent.ThreadLocalRandom;
+
+/* The sender class */
+
 public class sender{
 
+  /* The sender maintains a queue of packets that have been sent 
+   * Information about these sent packets is encapsulated in a Node object 
+   * */
   private static class Node{
     int dataSize;
     int seqNo;
@@ -32,6 +38,7 @@ public class sender{
   static int receivedAck = 0;
   static LinkedList<Node> q;
   static int LOSS_FLAG = 0;
+
 /*
 * Generates a Packet to send over the network.
 * The packet contains bytes from seq# upto seq# + dataSize.
@@ -56,6 +63,8 @@ public class sender{
 
     return sendPacket;
   }
+
+  /* only initializes the Threads to send and receive */
   public static void main(String[] args) throws Exception {
     receiverAddress = InetAddress.getByName(args[0]);
     receiverPort = Integer.parseInt(args[1]);
@@ -76,37 +85,41 @@ public class sender{
     r.start();
   }
 
+  /* the thread to send to the receiver */
   private static class SendThread extends Thread{
     public void run(){
-      try{
-        int currSent = 0;                                                         // i.e. I've sent upto this point.
+      try {
+        int currSent = 0;                                                         
+        // i.e. I've sent upto this point.
         while(receivedAck < DATA_LENGTH){
-          int limit = min(receivedAck + W,DATA_LENGTH);                                            // This is the max I'm allowed to send.
-
-          while(currSent < limit){                                                // Send all packets I'm allowed to send, until window closes.
-
+          // This is the max I'm allowed to send.
+          int limit = min(receivedAck + W,DATA_LENGTH);                                            
+          // Send all packets I'm allowed to send, until window closes.
+          while(currSent < limit){                                                
             int size = min(MSS,limit - currSent);
             if(currSent < DATA_LENGTH){
               DatagramPacket packet = getPacket(currSent,size);
               long currTime = System.nanoTime();
-              if(LOSS_FLAG > 0)
-              {
+              if(LOSS_FLAG > 0) {
                 if(ThreadLocalRandom.current().nextInt(1,21) != 1)
                     senderSocket.send(packet);
               }
-              else
-              {
+              else {
                   senderSocket.send(packet);
               }
-              printValues(currSent,currTime,0);                    // print seqNo
-              q.addFirst(new Node(currSent,size,currTime));                           // put this packet in queue for timer check.
+              // prints the sequence number
+              printValues(currSent,currTime,0);
+              // put this packet in queue for timer check.
+              q.addFirst(new Node(currSent,size,currTime)); 
               currSent = currSent + size;
             }
           }
-          if(q.size() > 0){                                                    // Check for lost packets.
+          if(q.size() > 0) {                                     
+            // Check for lost packets.
             Node node = q.getLast();
             if(node != null  && System.nanoTime() - node.T > 1000000000){
-              W = MSS;                                                             // drop Window size
+              W = MSS;
+              // drop Window size
               currSent = receivedAck;
               q.clear();
             }
@@ -124,8 +137,7 @@ public class sender{
     }
   }
 
-
-
+  /* Receive Acknowledgements */
   private static class ReceiveThread extends Thread{
     public void run(){
       try{
@@ -137,9 +149,12 @@ public class sender{
           int ack = Integer.parseInt(str.trim());
           printValues(ack, System.nanoTime(), 1);
           receivedAck = ack;
+          /* update window size */
           W = W + (MSS*MSS)/W;
-          if(q.size()>0)
-          {
+          /* remove all the packets in the queue 
+           * whose successor's ack has been recieved 
+           **/
+          if(q.size()>0) {
             Node n = q.getLast();
             while(n!=null && n.seqNo + n.dataSize - 1 < ack){
               q.removeLast();
@@ -150,8 +165,7 @@ public class sender{
             }
           }
         }
-      } catch(Exception e)
-      {
+      } catch(Exception e) {
         System.out.println("Exception:" + e.getLocalizedMessage());
       }
     }
@@ -160,9 +174,9 @@ public class sender{
       thread = new Thread(this);
       thread.start();
     }
-
   }
 
+  /* utility function to print the sequence number sent and received packets and time elapsed */ 
   private static void printValues(int number, long currTime, int flag){
     if(flag == 0) {
       System.out.println("Seq#: " + String.valueOf(number) + "\t"+"Time elapsed: " + String.valueOf( (double)(currTime - initTime)/1000000000 ) + " s");
@@ -171,6 +185,7 @@ public class sender{
       System.out.println("Ack#: " + String.valueOf(number) + "\t"+"Time elapsed: " + String.valueOf( (double)(currTime - initTime)/1000000000) + " s");
     }
   }
+  /* magic */
   private static int min(int a,int b){
     return a>b?b:a;
   }

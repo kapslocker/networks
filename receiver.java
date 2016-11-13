@@ -1,7 +1,10 @@
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
-public class receiver{
+
+/* The receiver class, that sends the acknowledgemnt back to the sender */
+
+public class receiver {
   static int x = 0;                                    // cumulative ACK#
   static int receiverPort = 4358;
   static DatagramSocket receiverSocket;
@@ -9,6 +12,8 @@ public class receiver{
   static int senderReceivePort = 1124;
   static InetAddress senderAddress;
 
+
+  /* extracts packet sequence number */
   private static Packet extractPacketInfo(ByteArrayInputStream receivedBytes) throws Exception{
     ObjectInputStream iStream = new ObjectInputStream(receivedBytes);
     Packet packet = (Packet) iStream.readObject();
@@ -16,12 +21,14 @@ public class receiver{
     return packet;
   }
 
+  /* listens at port 4358 and returns acknowledgemnts */
   public static void main(String[] args) throws Exception {
     if(args.length>0)
       receiverPort = Integer.parseInt(args[0]);
     receiverSocket = new DatagramSocket(receiverPort);
     byte[] receivedData = new byte[10000];
     DatagramPacket receivePacket = new DatagramPacket(receivedData, receivedData.length);
+    /* do this a hundred thousand times */
     while(x < 99999){
       receiverSocket.receive(receivePacket);
       receivedData = receivePacket.getData();
@@ -30,6 +37,7 @@ public class receiver{
 
       Packet rcv = extractPacketInfo(new ByteArrayInputStream(receivedData));
 
+      /* update x if packet sequence number is the next one */
       if(x == rcv.seqNo){
         int temp = rcv.seqNo + rcv.dataSize;
         x = temp;
@@ -37,7 +45,7 @@ public class receiver{
       String str = String.valueOf(x);
       byte[] ackBytes = str.getBytes();
       DatagramPacket packetToSend = new DatagramPacket(ackBytes, ackBytes.length, senderAddress, senderReceivePort);
-      receiverSocket.send(packetToSend);                          //TODO: Debug if the right ack is being sent.
+      receiverSocket.send(packetToSend);
       printValues(x);
     }
   }
